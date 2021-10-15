@@ -30,3 +30,14 @@ class UserAddresses(models.Model):
         on_delete=models.CASCADE,
     )
     address = models.CharField(max_length=50)
+
+
+class Order(models.Model):
+    deposit_address = models.ForeignKey(
+        UserAddresses,
+        on_delete=models.CASCADE,
+        related_name="orders"
+    )
+    amount = models.FloatField()
+    completed = models.BooleanField(default=False)
+

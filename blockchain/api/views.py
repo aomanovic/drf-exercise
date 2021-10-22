@@ -23,6 +23,7 @@ class SearchByAddressView(APIView):
 
     def get(self, request, address, format=None):
         data = {"address": address, "user": request.user.id}
+        # this api will only search for bitcoin addresses, so to add other currency addresses, their apis must be called
         url = f"https://blockchain.info/rawaddr/{address}"
         header = {'content-type': 'application/json'}
         res = requests.get(url=url, headers=header)
@@ -95,7 +96,7 @@ class UserAddressesView(APIView):
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        data = {'user': request.user.id, 'address': request.data['address']}
+        data = {'user': request.user.id, 'address': request.data['address'], 'currency': request.data['currency']}
         serializer = UserAddressesSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -139,7 +140,7 @@ class OrdersView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        data = {'amount': request.data['amount']}
+        data = {'amount': request.data['amount'], 'pair': request.data['pair'], 'side': request.data['side']}
         serializer = OrderSerializer(data=data, context={"user": request.user})
         if serializer.is_valid():
             created_order = serializer.save()
@@ -154,7 +155,7 @@ class CompleteOrderView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, order_id):
-        order = get_object_or_404(Order, id=order_id)
+        order = get_object_or_404(Order, id=order_id, deposit_address__user=request.user)
         serializer = CompleteOrderSerializer(data=request.data, context={"order": order})
         if serializer.is_valid():
             serializer.save()

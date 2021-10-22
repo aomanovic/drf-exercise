@@ -21,7 +21,7 @@ class SearchTransactionSerializer(serializers.ModelSerializer):
 class UserAddressesSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAddresses
-        fields = ['user', 'address']
+        fields = ['user', 'address', 'currency']
         validators = [
             UniqueTogetherValidator(
                 queryset=UserAddresses.objects.all(),
@@ -45,21 +45,27 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'amount', 'deposit_address', 'completed']
+        fields = ['id', 'amount', 'deposit_address', 'pair', 'side', 'completed']
         read_only_fields = ['id', 'deposit_address', 'completed']
 
-    def validate(self, value):
-        user = self.context["user"]
-        user_addresses = get_available_addresses(user)
+    def __init__(self, *args, **kwargs):
+        super(OrderSerializer, self).__init__(*args, **kwargs)
+        data = kwargs.get("data", None)
+        if data and "pair" in data and 'side' in data:
+            currencies_in_pair = data['pair'].split("/")
+            base_currency = currencies_in_pair[0]
+            quote_currency = currencies_in_pair[1]
+            deposit_address_currency = base_currency if data['side'] == 1 else quote_currency
+            self.available_addresses = get_available_addresses(self.context["user"], deposit_address_currency)
 
-        if not user_addresses.exists():
+    def validate(self, value):
+        if not self.available_addresses.exists():
             raise serializers.ValidationError("There are no available addresses")
 
         return value
 
     def save(self, **kwargs):
-        user = self.context["user"]
-        deposit_address = get_available_addresses(user).first()
+        deposit_address = self.available_addresses.first()
         data = self.validated_data
         data["deposit_address"] = deposit_address
         return Order.objects.create(**data)

@@ -30,3 +30,22 @@ class UserAddresses(models.Model):
         on_delete=models.CASCADE,
     )
     address = models.CharField(max_length=50)
+    currency = models.CharField(max_length=10)
+
+
+class Order(models.Model):
+    SIDE_CHOICES = [
+        (0, 'BUY'),
+        (1, 'SELL'),
+    ]
+
+    deposit_address = models.ForeignKey(
+        UserAddresses,
+        on_delete=models.PROTECT,
+        related_name="orders"
+    )
+    amount = models.DecimalField(max_digits=40, decimal_places=18)
+    pair = models.CharField(max_length=16)
+    side = models.IntegerField(choices=SIDE_CHOICES)
+    completed = models.BooleanField(default=False)
+

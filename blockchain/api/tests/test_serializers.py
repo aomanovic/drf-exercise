@@ -1,4 +1,6 @@
-from blockchain.api.serializers import SearchAddressSerializer, SearchTransactionSerializer, UserAddressesSerializer
+from blockchain.api.serializers import CompleteOrderSerializer, OrderSerializer, SearchAddressSerializer, \
+    SearchTransactionSerializer, \
+    UserAddressesSerializer
 from rest_framework.test import APITestCase
 from rest_framework.reverse import reverse
 
@@ -85,7 +87,7 @@ class TestUserAddressesSerializer(APITestCase):
         ser.save()
 
     def test_normal_serialization_validation(self):
-        data = {'user': 1, 'address': 'adsadasdgsdf564f63d4f3241d'}
+        data = {'user': 1, 'address': 'adsadasdgsdf564f63d4f3241d', 'currency': 'BTC'}
         ser = UserAddressesSerializer(data=data)
         self.assertTrue(ser.is_valid())
 
@@ -105,23 +107,93 @@ class TestUserAddressesSerializer(APITestCase):
         self.assertFalse(ser.is_valid())
 
     def test_serialization_create(self):
-        data = {'user': 1, 'address': 'adsadasdgsdf564f63d4f3241d'}
+        data = {'user': 1, 'address': 'adsadasdgsdf564f63d4f3241d', 'currency': 'BTC'}
         ser = UserAddressesSerializer(data=data)
         ser.is_valid()
         ser.save()
-        self.assertEqual(ser.data.keys(), {"user", "address"})
+        self.assertEqual(ser.data.keys(), {"user", "address", "currency"})
 
     def test_serialization_not_searched_address(self):
-        data = {'user': 1, 'address': 'sdgsdf564f63d4f3241d'}
+        data = {'user': 1, 'address': 'sdgsdf564f63d4f3241d', 'currency': 'BTC'}
         ser = UserAddressesSerializer(data=data)
         self.assertFalse(ser.is_valid())
         self.assertEqual(ser.errors.keys(), {"non_field_errors"})
 
     def test_serialization_dublicate_address_save(self):
-        data = {'user': 1, 'address': 'adsadasdgsdf564f63d4f3241d'}
+        data = {'user': 1, 'address': 'adsadasdgsdf564f63d4f3241d', 'currency': 'BTC'}
         ser = UserAddressesSerializer(data=data)
         ser.is_valid()
         ser.save()
         ser = UserAddressesSerializer(data=data)
         self.assertFalse(ser.is_valid())
         self.assertEqual(ser.errors.keys(), {"non_field_errors"})
+
+
+class TestCompleteOrderSerializer(APITestCase):
+    def setUp(self):
+        data = {'username': 'testLogin', "password": "testPassword.1"}
+        _ = self.client.post(path=reverse("accounts:reg_view"), data=data)
+
+    def test_serialization_complete_order_invalid(self):
+        data = {'completed': 'abcd'}
+        ser = CompleteOrderSerializer(data=data)
+        self.assertFalse(ser.is_valid())
+
+    def test_serialization_complete_order_valid(self):
+        data = {'completed': True}
+        ser = CompleteOrderSerializer(data=data)
+        self.assertTrue(ser.is_valid())
+
+
+class TestOrderSerializer(APITestCase):
+    def setUp(self):
+        data = {'username': 'testLogin', "password": "testPassword.1"}
+        _ = self.client.post(path=reverse("accounts:reg_view"), data=data)
+
+    def test_serialization_create_order_address_not_set(self):
+        data = {'amount': 123.00, 'pair': 'BTC/BCH', 'side': 1}
+        ser = OrderSerializer(data=data, context={"user": 1})
+        self.assertFalse(ser.is_valid())
+        self.assertEqual(ser.errors.keys(), {"non_field_errors"})
+
+    def test_serialization_create_order_invalid_input(self):
+        data = {'amount': "abc"}
+        ser = OrderSerializer(data=data, context={"user": 1})
+        self.assertFalse(ser.is_valid())
+
+    def test_serialization_create_order(self):
+        ser = SearchAddressSerializer(data={'user': 1, 'address': 'adsadasdgsdf564f63d4f3241d'})
+        ser.is_valid()
+        ser.save()
+
+        data = {'user': 1, 'address': 'adsadasdgsdf564f63d4f3241d', 'currency': 'BTC'}
+        ser = UserAddressesSerializer(data=data)
+        ser.is_valid()
+        ser.save()
+
+        data = {'amount': 123.00, 'pair': 'BTC/BCH', 'side': 1}
+        ser = OrderSerializer(data=data, context={"user": 1})
+        ser.is_valid()
+        created_object = ser.save()
+        self.assertIsNotNone(created_object.id)
+        self.assertEqual(created_object.amount, data["amount"])
+
+    def test_serialization_create_order_no_available_address(self):
+        ser = SearchAddressSerializer(data={'user': 1, 'address': 'adsadasdgsdf564f63d4f3241d'})
+        ser.is_valid()
+        ser.save()
+
+        data = {'user': 1, 'address': 'adsadasdgsdf564f63d4f3241d', 'currency': 'BTC'}
+        ser = UserAddressesSerializer(data=data)
+        ser.is_valid()
+        ser.save()
+
+        data = {'amount': 123.00, 'pair': 'BTC/BCH', 'side': 1}
+        ser = OrderSerializer(data=data, context={"user": 1})
+        ser.is_valid()
+        ser.save()
+
+        ser = OrderSerializer(data=data, context={"user": 1})
+        self.assertFalse(ser.is_valid())
+        self.assertEqual(ser.errors.keys(), {"non_field_errors"})
+        self.assertEqual(ser.errors['non_field_errors'][0], "There are no available addresses")

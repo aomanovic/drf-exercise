@@ -99,7 +99,7 @@ class TestUserAddressesView(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION="Token " + self.token.key)
 
     def test_marked_as_mine(self):
-        data = {"address": "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"}
+        data = {"address": "1BoatSLRHtKNngkdXEeobR76b53LETtpyT", "currency": "BTC"}
         self.client.post(self.url, data=data)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -111,17 +111,17 @@ class TestUserAddressesView(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_mark_address_as_mine(self):
-        data = {"address": "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"}
+        data = {"address": "1BoatSLRHtKNngkdXEeobR76b53LETtpyT", "currency": "BTC"}
         response = self.client.post(self.url, data=data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_mark_unsearched_address_as_mine(self):
-        data = {"address": "dasdfdsf"}
+        data = {"address": "dasdfdsf", "currency": "BTC"}
         response = self.client.post(self.url, data=data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_mark_searched_invalid_address_as_mine(self):
-        data = {"address": "ttt123"}
+        data = {"address": "ttt123", "currency": "BTC"}
         ser = SearchAddressSerializer(data={"address": "ttt123", "user": 1, "valid": False})
         ser.is_valid()
         ser.save()
@@ -129,7 +129,7 @@ class TestUserAddressesView(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_unmark_searched_address_as_mine(self):
-        data = {"address": "1BoatSLRHtKNngkdXEeobR76b53LETtpyT"}
+        data = {"address": "1BoatSLRHtKNngkdXEeobR76b53LETtpyT", "currency": "BTC"}
         ser = SearchAddressSerializer(data={"address": "1BoatSLRHtKNngkdXEeobR76b53LETtpyT", "user": 1})
         ser.is_valid()
         ser.save()
@@ -156,9 +156,9 @@ class TestUserBalanceView(APITestCase):
         ser.is_valid()
         ser.save()
         self.client.post(reverse("blockchain_api:mine_addresses"),
-                         data={'address': "1A8JiWcwvpY7tAopUkSnGuEYHmzGYfZPiq"})
+                         data={'address': "1A8JiWcwvpY7tAopUkSnGuEYHmzGYfZPiq", "currency": "BTC"})
         self.client.post(reverse("blockchain_api:mine_addresses"),
-                         data={'address': "1AJbsFZ64EpEfS5UAjAfcUG8pH8Jn3rn1F"})
+                         data={'address': "1AJbsFZ64EpEfS5UAjAfcUG8pH8Jn3rn1F", "currency": "BTC"})
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreater(json.loads(response.content)['balance'], 0)
